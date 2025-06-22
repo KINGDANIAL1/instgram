@@ -2,45 +2,36 @@ import os
 import random
 import time
 import instaloader
-import undetected_chromedriver as uc
+import requests
+from bs4 import BeautifulSoup
 
-
-# تسجيل الدخول بـ instaloader (فقط لتحميل لاحقًا أو إدارة الجلسة)
+# إعداد Instaloader وتحميل الجلسة
 L = instaloader.Instaloader()
 USERNAME = '1.million.11'
 L.load_session_from_file(USERNAME, filename="data/session-1.million.11")
 
-
-
-# إعداد Selenium بدون واجهة
-options = uc.ChromeOptions()
-options.add_argument("--headless")
-options.add_argument("--disable-gpu")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-driver = uc.Chrome(options=options)
-
-
 # الحساب المستهدف
-#target_username = input("🧾 أدخل اسم الحساب (بدون @): ")
-url = f"https://www.instagram.com/one_billion_academy/reels/"
+TARGET_USERNAME = "one_billion_academy"
+URL = f"https://www.instagram.com/{TARGET_USERNAME}/reels/"
 
-print(f"\n🔍 فتح الصفحة: {url}")
-driver.get(url)
-time.sleep(5)
+print(f"🔍 فتح الصفحة: {URL}")
+headers = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+response = requests.get(URL, headers=headers)
+soup = BeautifulSoup(response.text, "html.parser")
 
-# تمرير الصفحة لتحميل الريلزات
-for _ in range(4):  # عدل العدد حسب عدد الريلزات المطلوب
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(3)
+# استخراج روابط الريلز من الصفحة (تكون داخل <a href="/reel/shortcode/">)
+reel_links = []
+for a in soup.find_all("a", href=True):
+    href = a["href"]
+    if "/reel/" in href:
+        full_url = "https://www.instagram.com" + href
+        reel_links.append(full_url)
 
-# استخراج روابط الريلز
-elements = driver.find_elements("xpath", '//a[contains(@href, "/reel/")]')
-reel_links = list(set([el.get_attribute('href') for el in elements]))  # إزالة التكرار
-
-driver.quit()
-
-# ترتيب عشوائي للروابط
+# إزالة التكرارات وترتيبها عشوائياً
+reel_links = list(set(reel_links))
 random.shuffle(reel_links)
 
 # مجلد التحميل
@@ -54,7 +45,7 @@ for reel_url in reel_links:
     try:
         post = instaloader.Post.from_shortcode(L.context, shortcode)
         filename = os.path.join(download_dir, f"{shortcode}.mp4")
-        if not os.path.exists(filename):  # التحقق من عدم التكرار
+        if not os.path.exists(filename):
             print(f"⬇️ تحميل: {reel_url}")
             L.download_post(post, target=download_dir)
             count += 1
