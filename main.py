@@ -1,57 +1,60 @@
 import os
 import random
-import time
 import instaloader
-import requests
-from bs4 import BeautifulSoup
+import json
 
-# إعداد Instaloader وتحميل الجلسة
-L = instaloader.Instaloader()
-USERNAME = '1.million.11'
-L.load_session_from_file(USERNAME, filename="data/session-1.million.11")
+SAVE_DIR = "INSTA"
+SESSION_FILE = "data/session-1.million.11"
+LOG_FILE = "data/posted.json"
+TARGET_ACCOUNTS = ["one_billion_academy", "arabtrillionaire", "the.millionaire.man1"]
 
-# الحساب المستهدف
-TARGET_USERNAME = "one_billion_academy"
-URL = f"https://www.instagram.com/{TARGET_USERNAME}/reels/"
+# إنشاء مجلد التحميل
+os.makedirs(SAVE_DIR, exist_ok=True)
 
-print(f"🔍 فتح الصفحة: {URL}")
-headers = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept-Language": "en-US,en;q=0.9",
-}
-response = requests.get(URL, headers=headers)
-soup = BeautifulSoup(response.text, "html.parser")
+# تحميل سجل المنشورات السابقة
+if os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "r") as f:
+        posted = set(json.load(f))
+else:
+    posted = set()
 
-# استخراج روابط الريلز من الصفحة (تكون داخل <a href="/reel/shortcode/">)
-reel_links = []
-for a in soup.find_all("a", href=True):
-    href = a["href"]
-    if "/reel/" in href:
-        full_url = "https://www.instagram.com" + href
-        reel_links.append(full_url)
+# تحميل الجلسة
+L = instaloader.Instaloader(dirname_pattern=SAVE_DIR, save_metadata=False, download_comments=False)
+USERNAME = "1.million.11"
+L.load_session_from_file(USERNAME, filename=SESSION_FILE)
 
-# إزالة التكرارات وترتيبها عشوائياً
-reel_links = list(set(reel_links))
-random.shuffle(reel_links)
-
-# مجلد التحميل
-download_dir = "INSTA"
-os.makedirs(download_dir, exist_ok=True)
-
-# تحميل الريلز باستخدام Instaloader
+# تحميل ريلزات عشوائية من الحسابات
+random.shuffle(TARGET_ACCOUNTS)
 count = 0
-for reel_url in reel_links:
-    shortcode = reel_url.split("/reel/")[1].strip("/")
-    try:
-        post = instaloader.Post.from_shortcode(L.context, shortcode)
-        filename = os.path.join(download_dir, f"{shortcode}.mp4")
-        if not os.path.exists(filename):
-            print(f"⬇️ تحميل: {reel_url}")
-            L.download_post(post, target=download_dir)
-            count += 1
-        else:
-            print(f"⏩ تم تخطي الريلز (مكرر): {shortcode}")
-    except Exception as e:
-        print(f"❌ فشل في تحميل: {reel_url}\nسبب: {e}")
 
-print(f"\n✅ تم تحميل {count} ريلز في مجلد {download_dir}")
+for account in TARGET_ACCOUNTS:
+    print(f"📥 تحميل من @{account}...")
+    try:
+        profile = instaloader.Profile.from_username(L.context, account)
+        posts = list(profile.get_posts())
+        random.shuffle(posts)
+
+        for post in posts:
+            if not post.is_video or post.typename != "GraphVideo":
+                continue  # تخطي الصور والمنشورات غير الفيديو
+
+            shortcode = post.shortcode
+            if shortcode in posted:
+                continue
+
+            # تحميل المنشور
+            L.download_post(post, target=os.path.join(SAVE_DIR, account))
+            posted.add(shortcode)
+            count += 1
+
+            # حفظ التحديثات
+            with open(LOG_FILE, "w") as f:
+                json.dump(list(posted), f)
+
+            print(f"✅ تم تحميل: {shortcode}")
+            break
+
+    except Exception as e:
+        print(f"⚠️ خطأ في @{account}: {e}")
+
+print(f"\n✅ تم تحميل {count} ريلز في مجلد {SAVE_DIR}")
