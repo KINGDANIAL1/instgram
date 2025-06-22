@@ -8,7 +8,9 @@ import undetected_chromedriver as uc
 # تسجيل الدخول بـ instaloader (فقط لتحميل لاحقًا أو إدارة الجلسة)
 L = instaloader.Instaloader()
 USERNAME = '1.million.11'
-L.load_session_from_file(USERNAME)
+L.load_session_from_file(USERNAME, filename="data/session-1.million.11")
+
+
 
 # إعداد Selenium بدون واجهة
 options = uc.ChromeOptions()
