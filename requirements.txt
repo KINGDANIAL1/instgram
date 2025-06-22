@@ -1,3 +1,5 @@
 instaloader
 undetected-chromedriver
 setuptools
+beautifulsoup4
+requests
