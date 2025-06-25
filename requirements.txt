@@ -1,8 +1,4 @@
-instaloader
-undetected-chromedriver
-setuptools
-beautifulsoup4
-requests
-google-api-python-client
+instagrapi
 google-auth
+google-api-python-client
 schedule
