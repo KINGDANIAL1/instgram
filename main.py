@@ -128,27 +128,25 @@ def main():
         time.sleep(2 * 60)
         publish_two_posts()
 
-    # جدولة النشر
-    schedule.every().monday.at("10:00").do(publish_two_posts)
-    schedule.every().tuesday.at("10:00").do(publish_two_posts)
-    schedule.every().wednesday.at("10:00").do(publish_two_posts)
-    schedule.every().thursday.at("10:00").do(publish_two_posts)
-    schedule.every().friday.at("10:00").do(publish_two_posts)
+    # جدولة النشر (بتوقيت UTC)
+    schedule.every().monday.at("09:00").do(publish_two_posts)
+    schedule.every().tuesday.at("09:00").do(publish_two_posts)
+    schedule.every().wednesday.at("09:00").do(publish_two_posts)
+    schedule.every().thursday.at("09:00").do(publish_two_posts)
+    schedule.every().friday.at("09:00").do(publish_two_posts)
 
-    schedule.every().monday.at("18:00").do(publish_two_posts)
-    schedule.every().tuesday.at("18:00").do(publish_two_posts)
-    schedule.every().wednesday.at("18:00").do(publish_two_posts)
-    schedule.every().thursday.at("18:00").do(publish_two_posts)
-    schedule.every().friday.at("18:00").do(publish_two_posts)
+    schedule.every().monday.at("15:00").do(publish_two_posts)
+    schedule.every().tuesday.at("15:00").do(publish_two_posts)
+    schedule.every().wednesday.at("15:00").do(publish_two_posts)
+    schedule.every().thursday.at("15:00").do(publish_two_posts)
+    schedule.every().friday.at("15:00").do(publish_two_posts)
 
-    schedule.every().day.at("12:00").do(publish_daily_story)
-    schedule.every().wednesday.at("18:16").do(publish_story_then_one_post)
-
+    schedule.every().day.at("11:00").do(publish_daily_story)
+  
     print("⏰ السكربت يعمل الآن تلقائيًا. اضغط Ctrl+C للإيقاف.")
 
     try:
         while True:
-            print("🕒 الوقت الحالي على الخادم:", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"))
             schedule.run_pending()
             time.sleep(60)
     except KeyboardInterrupt:
