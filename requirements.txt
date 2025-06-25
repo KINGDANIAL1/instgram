@@ -3,3 +3,6 @@ undetected-chromedriver
 setuptools
 beautifulsoup4
 requests
+google-api-python-client
+google-auth
+schedule
