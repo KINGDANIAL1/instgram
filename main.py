@@ -1,15 +1,15 @@
 import os
 import random
 import time
+import schedule
 import tempfile
-import json
 from datetime import datetime
 from instagrapi import Client
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
-# جلب متغيرات البيئة
+# جلب بيانات البيئة
 IG_USERNAME = os.getenv("IG_USERNAME")
 IG_PASSWORD = os.getenv("IG_PASSWORD")
 SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON")
@@ -17,7 +17,7 @@ SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON")
 if not (IG_USERNAME and IG_PASSWORD and SERVICE_ACCOUNT_JSON):
     raise Exception("❌ يرجى تعيين المتغيرات IG_USERNAME و IG_PASSWORD و SERVICE_ACCOUNT_JSON في البيئة")
 
-# إنشاء ملف JSON مؤقت لحساب Google Service
+# إنشاء ملف JSON مؤقت لحساب الخدمة
 with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp_file:
     tmp_file.write(SERVICE_ACCOUNT_JSON)
     tmp_file.flush()
@@ -94,43 +94,65 @@ def publish_story(client, file):
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-def pick_available_videos(posted, n=1):
-    all_files = get_videos_from_drive()
-    available = [f for f in all_files if f['name'].lower().endswith('.mp4') and f['name'] not in posted]
-    random.shuffle(available)
-    return available[:n]
-
 def main():
     print("🔐 تسجيل الدخول...")
     client = Client()
     client.login(IG_USERNAME, IG_PASSWORD)
     posted = load_posted()
 
-    print("⏳ انتظار دقيقتين قبل بدء النشر...")
-    time.sleep(240)
+    def pick_available_videos(n=1):
+        all_files = get_videos_from_drive()
+        available = [f for f in all_files if f['name'].lower().endswith('.mp4') and f['name'] not in posted]
+        random.shuffle(available)
+        return available[:n]
 
-    files = pick_available_videos(posted, 3)
-    if not files:
-        print("🚫 لا توجد فيديوهات متاحة.")
-        return
-
-    print("🟢 بدء النشر بعد الانتظار...")
-
-    try:
-        # نشر ستوري
-        publish_story(client, files[0])
-        posted.add(files[0]['name'])
-
-        # نشر 2 ريلز
-        for file in files[1:]:
+    def publish_two_posts():
+        print("🟢 بدء نشر منشورين...")
+        for file in pick_available_videos(2):
             publish_post(client, file)
             posted.add(file['name'])
             time.sleep(random.randint(30, 60))
 
-    except Exception as e:
-        print(f"❌ خطأ أثناء النشر: {e}")
+    def publish_daily_story():
+        print("🔵 نشر ستوري...")
+        files = pick_available_videos()
+        if not files:
+            print("🚫 لا توجد فيديوهات متاحة.")
+            return
+        publish_story(client, files[0])
+        posted.add(files[0]['name'])
 
-    print("✅ تم تنفيذ النشر.")
+    def publish_story_then_one_post():
+        publish_daily_story()
+        print("⏳ انتظار 2 دقائق...")
+        time.sleep(2 * 60)
+        publish_two_posts()
+
+    # جدولة النشر
+    schedule.every().monday.at("10:00").do(publish_two_posts)
+    schedule.every().tuesday.at("10:00").do(publish_two_posts)
+    schedule.every().wednesday.at("10:00").do(publish_two_posts)
+    schedule.every().thursday.at("10:00").do(publish_two_posts)
+    schedule.every().friday.at("10:00").do(publish_two_posts)
+
+    schedule.every().monday.at("18:00").do(publish_two_posts)
+    schedule.every().tuesday.at("18:00").do(publish_two_posts)
+    schedule.every().wednesday.at("18:00").do(publish_two_posts)
+    schedule.every().thursday.at("18:00").do(publish_two_posts)
+    schedule.every().friday.at("18:00").do(publish_two_posts)
+
+    schedule.every().day.at("12:00").do(publish_daily_story)
+    schedule.every().wednesday.at("18:16").do(publish_story_then_one_post)
+
+    print("⏰ السكربت يعمل الآن تلقائيًا. اضغط Ctrl+C للإيقاف.")
+
+    try:
+        while True:
+            print("🕒 الوقت الحالي على الخادم:", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"))
+            schedule.run_pending()
+            time.sleep(60)
+    except KeyboardInterrupt:
+        print("🛑 تم إيقاف السكربت.")
 
 if __name__ == "__main__":
     main()
