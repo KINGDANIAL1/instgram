@@ -1,4 +1,4 @@
-timport os
+import os
 import random
 import time
 import schedule
@@ -129,11 +129,11 @@ def main():
         publish_two_posts()
 
     # جدولة النشر (بتوقيت UTC)
-    schedule.every().monday.at("09:00").do(publish_two_posts)
-    schedule.every().tuesday.at("09:00").do(publish_two_posts)
-    schedule.every().wednesday.at("09:00").do(publish_two_posts)
-    schedule.every().thursday.at("09:00").do(publish_two_posts)
-    schedule.every().friday.at("09:00").do(publish_two_posts)
+    schedule.every().monday.at("07:00").do(publish_two_posts)
+    schedule.every().tuesday.at("07:00").do(publish_two_posts)
+    schedule.every().wednesday.at("07:00").do(publish_two_posts)
+    schedule.every().thursday.at("07:00").do(publish_two_posts)
+    schedule.every().friday.at("07:00").do(publish_two_posts)
 
     schedule.every().monday.at("15:00").do(publish_two_posts)
     schedule.every().tuesday.at("15:00").do(publish_two_posts)
@@ -141,7 +141,7 @@ def main():
     schedule.every().thursday.at("15:00").do(publish_two_posts)
     schedule.every().friday.at("15:00").do(publish_two_posts)
 
-    schedule.every().day.at("11:00").do(publish_daily_story)
+    schedule.every().day.at("03:00").do(publish_daily_story)
   
     print("⏰ السكربت يعمل الآن تلقائيًا. اضغط Ctrl+C للإيقاف.")
 
