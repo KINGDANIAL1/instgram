@@ -1,4 +1,4 @@
-import os
+timport os
 import random
 import time
 import schedule
