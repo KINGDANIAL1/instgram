@@ -134,13 +134,15 @@ def main():
     schedule.every().wednesday.at("07:00").do(publish_two_posts)
     schedule.every().thursday.at("07:00").do(publish_two_posts)
     schedule.every().friday.at("07:00").do(publish_two_posts)
-
+    schedule.every().day.at("07:00").do(publish_two_posts)
+    
     schedule.every().monday.at("15:00").do(publish_two_posts)
     schedule.every().tuesday.at("15:00").do(publish_two_posts)
     schedule.every().wednesday.at("15:00").do(publish_two_posts)
     schedule.every().thursday.at("15:00").do(publish_two_posts)
     schedule.every().friday.at("15:00").do(publish_two_posts)
-
+    schedule.every().day.at("15:00").do(publish_two_posts)
+    
     schedule.every().day.at("03:00").do(publish_daily_story)
   
     print("⏰ السكربت يعمل الآن تلقائيًا. اضغط Ctrl+C للإيقاف.")
