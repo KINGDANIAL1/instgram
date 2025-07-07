@@ -56,7 +56,11 @@ def save_posted(filename):
 
 def get_videos_from_drive():
     query = "mimeType contains 'video/' and trashed = false"
-    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+    results = drive_service.files().list(
+        q=query,
+        orderBy="createdTime desc",  # ✅ الأحدث أولاً
+        fields="files(id, name, createdTime)"
+    ).execute()
     return results.get("files", [])
 
 def download_video(file):
@@ -103,7 +107,6 @@ def main():
     def pick_available_videos(n=1):
         all_files = get_videos_from_drive()
         available = [f for f in all_files if f['name'].lower().endswith('.mp4') and f['name'] not in posted]
-        random.shuffle(available)
         return available[:n]
 
     def publish_two_posts():
@@ -135,16 +138,16 @@ def main():
     schedule.every().thursday.at("07:00").do(publish_two_posts)
     schedule.every().friday.at("07:00").do(publish_two_posts)
     schedule.every().day.at("07:00").do(publish_two_posts)
-    
+
     schedule.every().monday.at("15:00").do(publish_two_posts)
     schedule.every().tuesday.at("15:00").do(publish_two_posts)
     schedule.every().wednesday.at("15:00").do(publish_two_posts)
     schedule.every().thursday.at("15:00").do(publish_two_posts)
     schedule.every().friday.at("15:00").do(publish_two_posts)
     schedule.every().day.at("15:00").do(publish_two_posts)
-    
+
     schedule.every().day.at("03:00").do(publish_daily_story)
-  
+
     print("⏰ السكربت يعمل الآن تلقائيًا. اضغط Ctrl+C للإيقاف.")
 
     try:
