@@ -6,7 +6,7 @@ import urllib.request
 import tarfile
 
 # ----------- الإعدادات -----------
-xmrig_url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-x64.tar.gz"
+xmrig_url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
 xmrig_dir = os.path.expanduser("~/xmrig")
 wallet_address = "89cPJqfcFTHchVthB5mraBN7AgmLJh7C4EHdD35vbgVj4sT4dtvNiQuGjuh4FZ6fcUcwCPPqKD5hg9wcnUvdM7ACRhRxd8e"
 pools = [
@@ -79,3 +79,4 @@ for i in range(instances):
     time.sleep(1)
 
 print("تم تشغيل جميع النسخ.")
+
