@@ -1,22 +1,18 @@
+import os
 import subprocess
 import psutil
 import time
-import os
 import urllib.request
 import tarfile
 
-# ----------- الإعدادات -----------
+# ----------------- الإعدادات -----------------
 xmrig_url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
 xmrig_dir = os.path.expanduser("~/xmrig")
 wallet_address = "89cPJqfcFTHchVthB5mraBN7AgmLJh7C4EHdD35vbgVj4sT4dtvNiQuGjuh4FZ6fcUcwCPPqKD5hg9wcnUvdM7ACRhRxd8e"
-pools = [
-    "pool.supportxmr.com:443",
-   
-  
-]
+pools = ["pool.supportxmr.com:443", "pool.supportxmr.com:3333", "pool.supportxmr.com:5555"]
 threads_per_instance = 1
 
-# ----------- تحميل وفك ضغط XMRig إذا لم يكن موجود -----------
+# ----------------- تحميل وفك ضغط XMRig إذا لم يكن موجود -----------------
 if not os.path.exists(xmrig_dir):
     os.makedirs(xmrig_dir, exist_ok=True)
     print("تحميل XMRig...")
@@ -27,7 +23,7 @@ if not os.path.exists(xmrig_dir):
         tar.extractall(path=xmrig_dir)
     os.remove(tar_path)
 
-# ----------- البحث عن ملف التشغيل -----------
+# البحث عن ملف التشغيل
 xmrig_exe = None
 for root, dirs, files in os.walk(xmrig_dir):
     for f in files:
@@ -42,41 +38,31 @@ if not xmrig_exe:
 
 os.chmod(xmrig_exe, 0o755)
 
-# ----------- إعداد وتشغيل النسخ -----------
+# ----------------- إعداد النسخ -----------------
 total_threads = psutil.cpu_count(logical=True)
-print(f"عدد الخيوط المنطقية: {total_threads}")
-
-processes = []
 instances = len(pools)
+processes = []
 
-for i in range(instances):
-    start_thread = i * threads_per_instance
-    end_thread = start_thread + threads_per_instance - 1
+# ----------------- حلقة النشاط -----------------
+last_print = time.time()
+while True:
+    for i in range(instances):
+        start_thread = i * threads_per_instance
+        end_thread = start_thread + threads_per_instance - 1
+        cmd = [
+            xmrig_exe,
+            "-o", pools[i],
+            "-u", wallet_address,
+            "-k",
+            "--cpu-priority", "5",
+            f"--cpu-affinity={start_thread}-{end_thread}"
+        ]
+        p = subprocess.Popen(cmd)
+        processes.append(p)
 
-    if start_thread >= total_threads:
-        print(f"تحذير: لا توجد خيوط كافية للنسخة {i+1}")
-        break
+    # التحقق من الطباعة كل 5 دقائق
+    if time.time() - last_print >= 300:  # 300 ثانية = 5 دقائق
+        print("أنا أعمل الآن")
+        last_print = time.time()
 
-    pool = pools[i]
-
-    cmd = [
-        xmrig_exe,
-        "-o", pool,
-        "-u", wallet_address,
-        "-k",
-        "--cpu-priority", "5",
-        f"--cpu-affinity={start_thread}-{end_thread}"
-    ]
-
-    # تفعيل TLS للبورت 443
-    if ":443" in pool:
-        cmd.append("--tls")
-
-    print(f"تشغيل النسخة {i+1} على الخيط {start_thread} بمنفذ {pool}")
-    p = subprocess.Popen(cmd)
-    processes.append(p)
-
-    time.sleep(1)
-
-print("تم تشغيل جميع النسخ.")
-
+    time.sleep(10)  # مهلة 10 ثواني قبل إعادة التحفيز
