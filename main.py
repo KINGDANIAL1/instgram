@@ -9,7 +9,7 @@ import tarfile
 xmrig_url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
 xmrig_dir = os.path.expanduser("~/xmrig")
 wallet_address = "89cPJqfcFTHchVthB5mraBN7AgmLJh7C4EHdD35vbgVj4sT4dtvNiQuGjuh4FZ6fcUcwCPPqKD5hg9wcnUvdM7ACRhRxd8e"
-pools = ["pool.supportxmr.com:443", "pool.supportxmr.com:3333", "pool.supportxmr.com:5555"]
+pools = ["pool.supportxmr.com:3333", "pool.supportxmr.com:5555"]
 threads_per_instance = 1
 
 # ----------------- تحميل وفك ضغط XMRig إذا لم يكن موجود -----------------
@@ -66,3 +66,4 @@ while True:
         last_print = time.time()
 
     time.sleep(10)  # مهلة 10 ثواني قبل إعادة التحفيز
+
